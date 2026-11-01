@@ -36,33 +36,32 @@ DSH agent ── 工具 gpt_relay_ask ──▶ 本机 worker（127.0.0.1，仅�
 
 ### 1. 装插件
 
-从 npm（或任意方式把包装进 profile）：
+> **尚未发布到 npm**（包名 `dsh-gpt-relay` 已预留）。现在从 GitHub 装。
+
+从 GitHub 直接装（机器上要有 git）：
 
 ```powershell
 cd "$env:USERPROFILE\.dsh\profiles\desktop"
-npm install dsh-gpt-relay
+npm install "github:sxduang/dsh-gpt-relay"
 ```
 
-也可以直接从仓库装（npm 上还没发布时）：
+或者下载仓库 zip 解压到任意目录，再指向那个目录：
 
 ```powershell
 cd "$env:USERPROFILE\.dsh\profiles\desktop"
-git clone https://github.com/sxduang/dsh-gpt-relay
-npm install "file:./dsh-gpt-relay"
+npm install "file:D:\path\to\dsh-gpt-relay"
 ```
 
-然后在这个 profile 的 `package.json` 里登记两处：
+装完 `npm` 只会写 `dependencies`，**还要在同一个 `package.json` 的 `dsh.profile.bundles` 里加上包名**，插件才会被加载：
 
 ```jsonc
 {
-  "dependencies": { "dsh-gpt-relay": "^0.1.0" },
+  "dependencies": { "dsh-gpt-relay": "github:sxduang/dsh-gpt-relay" },
   "dsh": { "profile": { "bundles": [ "dsh-gpt-relay" ] } }
 }
 ```
 
-如果包内自带 `cordis.patch.yml`（本包有），也可以只把包名加进 `bundles`，bundle 会自动插入插件层。
-
-本地开发时可以直接指向目录：`npm install "file:D:\\path\\to\\dsh-gpt-relay"`。
+加 `bundles` 就够了：包内自带 `cordis.patch.yml`，bundle 会自己把插件层插进去。等 npm 发布之后命令换成 `npm install dsh-gpt-relay`，`bundles` 那一步不变。
 
 ### 2. 重启 DSH
 
