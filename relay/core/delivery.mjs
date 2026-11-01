@@ -5,6 +5,15 @@ function workspaceName(wsPath) {
   try { return path.basename(wsPath) } catch { return wsPath }
 }
 
+// dsh-wechat-send exit codes: 0 sent, 2 usage / no bound conversation,
+// 3 refused because the reply window is used up (queued, do not retry).
+export function wechatReason(code) {
+  if (code === 0) return 'ok'
+  if (code === 2) return 'no-wechat-conversation-bound'
+  if (code === 3) return 'wechat-window-closed'
+  return 'wechat-send-failed'
+}
+
 /** A screenshot for every captured answer; preserve text, continuation labels and delays. */
 export function buildDeliveryPlan({ job, markdown, screenshot, screenshots, chunkChars, now }) {
   const text = toWechat(markdown)
@@ -77,8 +86,11 @@ export function createDelivery({ config, storage, sendWechat, sleep = (ms) => ne
       try {
         const result=file ? await sendWechat(text,file) : await sendWechat(text)
         if(result?.code===0) return true
-        errors.push({code:result?.code ?? -1,file:file || ''})
-      } catch { errors.push({code:-1,file:file || ''}) }
+        const code=result?.code ?? -1
+        errors.push({code,file:file || '',reason:wechatReason(code),stderr:String(result?.stderr || '').slice(0,200)})
+      } catch (error) {
+        errors.push({code:-1,file:file || '',reason:wechatReason(-1),stderr:String(error?.message || error).slice(0,200)})
+      }
       return false
     }
     let warned=false
@@ -108,6 +120,6 @@ export function createDelivery({ config, storage, sendWechat, sleep = (ms) => ne
       await sleep(600)
     }
     if (plan.link) await send(plan.link)
-    return { file, images: imageFiles.length, chunks: plan.chunks.length, ...shotStatus(), errors }
+    return { file, images: imageFiles.length, chunks: plan.chunks.length, ...shotStatus(), errors, wechatError: errors[0] || null }
   }
 }

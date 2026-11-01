@@ -571,6 +571,8 @@ async function waitAnswer(deadline, sels, sentAt, tracker) {
 
   while (Date.now() < deadline) {
     await sleep(800)
+    // The page moved to another conversation: waiting cannot recover this job.
+    if (tracker && tracker.invalid && tracker.invalid()) return { invalid: tracker.invalid() }
     const nodes = assistantNodes(sels)
     const candidate = tracker ? tracker.find(nodes) : null
     const fresh = tracker ? (candidate ? [candidate] : []) : nodes.filter((n) => !seen.has(n))
@@ -840,6 +842,9 @@ function answerKey(node) {
 // Snapshot immediately BEFORE clicking send, after any slow uploads.
 // A new DOM node is not evidence of a new reply: history is virtualized.
 function createAnswerTracker(nodes, { question, anchor='', root=document } = {}) {
+  // Kept inside the factory: this file is also injected into a page as a bare
+  // function body by the browser test, where module-level helpers do not exist.
+  const convIdOf=url=>{try{return (new URL(url).pathname.match(/^\/c\/([^/]+)/)||[])[1]||''}catch{return ''}}
   const userSelector='[data-user-message-bubble],[data-message-author-role="user"],[data-markdown-text-style="user-message"]'
   const normalize=text=>String(text || '').replace(/\s+/g,' ').trim()
   const visible=n=>{const r=n.getBoundingClientRect();return n.isConnected && r.width>0 && r.height>0}
@@ -861,13 +866,26 @@ function createAnswerTracker(nodes, { question, anchor='', root=document } = {})
     if (!anchorNorm) return t===expected
     return t.includes(anchorNorm) && t.length>=Math.max(anchorNorm.length, expected.length*0.6)
   }
-  const existingConversation=/\/c\/[^/]+/.test(root.defaultView?.location?.pathname || '')
-  let questionKey='', selected=null, boundUrl=''
+  const existingConversation=!!convIdOf(root.defaultView?.location?.href || '')
+  let questionKey='', selected=null, boundUrl='', boundConversation='', invalidReason='', findDiag=null
 
   function currentQuestion() {
     if (!expected) return null
     const url=root.defaultView?.location?.href || ''
-    if (boundUrl && url!==boundUrl) return null
+    if (boundUrl) {
+      const now=convIdOf(url)
+      if (boundConversation) {
+        // A different /c/<id> is a different conversation: this job can no
+        // longer claim anything on screen.
+        if (now!==boundConversation) { invalidReason=now ? 'conversation-changed' : 'left-conversation'; return null }
+      } else if (now) {
+        // A brand-new chat commits its id right after the first send: chatgpt.com/
+        // or /?temp= becomes /c/<id> without replacing the page, so the binding
+        // taken just before it still refers to this same turn.
+        boundConversation=now
+      }
+      boundUrl=url
+    }
     const list=users().filter(visible)
     if (questionKey) {
       const found=list.filter(n=>answerKey(n)===questionKey && textMatches(n.innerText))
@@ -886,23 +904,40 @@ function createAnswerTracker(nodes, { question, anchor='', root=document } = {})
     }
     questionKey=key
     boundUrl=url
+    boundConversation=convIdOf(url)
     return candidate
   }
+
+  // The answer node and its question normally share a [data-turn-key] wrapper, but
+  // the page sometimes nests one inside the other (or keeps the key on an outer
+  // container), so accept either side containing the other.
+  const sameTurn=(node, turn)=>{
+    const at=node.closest('[data-turn-key]')
+    return !at || at===turn || turn.contains(at) || at.contains(turn)
+  }
+
   return {
     canSend() { return !existingConversation || !!previousUser },
+    // Non-empty once the page moved to another conversation; the caller should
+    // stop waiting instead of burning the whole timeout.
+    invalid() { return invalidReason },
     find(candidates) {
-      if (existingConversation && !previousUser) return null
+      findDiag={gate:'',nodes:candidates.length,visible:0,old:0,notAfter:0,otherTurn:0,empty:0,matches:0}
+      if (existingConversation && !previousUser) { findDiag.gate='no-previous-user'; return null }
       const user=currentQuestion()
       selected=null
-      if (!user) return null
+      if (!user) { findDiag.gate=invalidReason ? `binding-invalid:${invalidReason}` : 'no-question'; return null }
       const turn=user.closest('[data-turn-key]')
       const matches=candidates.filter(n=>{
-        if (!visible(n) || n.getBoundingClientRect().width<=100 || oldAnswers.has(n) || oldAnswerKeys.has(answerKey(n))) return false
-        if (!(user.compareDocumentPosition(n) & 4)) return false
-        if (turn && n.closest('[data-turn-key]')!==turn) return false
+        if (!visible(n) || n.getBoundingClientRect().width<=100) { findDiag.visible++; return false }
+        if (oldAnswers.has(n) || oldAnswerKeys.has(answerKey(n))) { findDiag.old++; return false }
+        if (!(user.compareDocumentPosition(n) & 4)) { findDiag.notAfter++; return false }
+        if (turn && !sameTurn(n, turn)) { findDiag.otherTurn++; return false }
         const text=(n.innerText || '').trim()
-        return text && !(/^思考了\s*\d/.test(text) && text.length<12)
+        if (!text || (/^思考了\s*\d/.test(text) && text.length<12)) { findDiag.empty++; return false }
+        return true
       })
+      findDiag.matches=matches.length
       // The final reply may replace an intermediate search message in this turn.
       selected=matches.at(-1) || null
       return selected
@@ -919,6 +954,7 @@ function createAnswerTracker(nodes, { question, anchor='', root=document } = {})
       const list=users().filter(visible)
       const last=list.at(-1)
       const text=last ? normalize(last.innerText) : ''
+      const url=root.defaultView?.location?.href || ''
       return {
         mode:anchorNorm ? 'anchor' : 'exact',
         expectedLen:expected.length,
@@ -932,6 +968,12 @@ function createAnswerTracker(nodes, { question, anchor='', root=document } = {})
         hasPreviousUser:!!previousUser,
         existingConversation,
         questionKey,
+        url,
+        boundUrl,
+        conversationId:convIdOf(url),
+        boundConversation,
+        invalidReason,
+        find:findDiag,
       }
     },
   }
@@ -988,8 +1030,11 @@ async function runAsk(job, sels) {
   // before anything else, otherwise the text goes nowhere.
   const overlayBefore = await dismissOverlays()
   const initialComposer=findComposer(sels)
-  if(!job.resumeUpload && initialComposer && (composerText(initialComposer).trim() || attachmentState(initialComposer,sels).count)) {
-    return {status:'error',error:'composer-busy',detail:'页面保留着未发送草稿，已停止；不要重复 ask 或新建对话。'}
+  // A draft left by the user (or by an interrupted attempt) is never cleared
+  // silently, but the error has to say what is actually sitting there.
+  const initialDraft=initialComposer ? {text:composerText(initialComposer).trim().slice(0,40),attachments:attachmentState(initialComposer,sels).count} : null
+  if(!job.resumeUpload && initialDraft && (initialDraft.text || initialDraft.attachments)) {
+    return {status:'error',error:'composer-busy',detail:`页面输入框里还留着未发送的内容${JSON.stringify(initialDraft)}，我没有动它；清空后重试。`}
   }
   if (job.newChat && !job.resumeUpload) {
     const newChat = [...document.querySelectorAll('button[aria-label]')].find((b) =>
@@ -1026,7 +1071,7 @@ async function runAsk(job, sels) {
     return {status:'error',error:'image-send-unconfirmed',detail:'原草稿已尝试发送，不会重复发送。'}
   }
   if ((existingText || existing.count) && !adopt) {
-    return { status: 'error', error: 'composer-busy', detail: '输入框里已有你正在写的内容，我没有动它' }
+    return { status: 'error', error: 'composer-busy', detail: `输入框里已有未发送的内容${JSON.stringify({text:existingText.slice(0,40),attachments:existing.count})}，我没有动它。` }
   }
 
   if (!adopt && !setText(composer, job.text)) {
@@ -1105,11 +1150,18 @@ async function runAsk(job, sels) {
       screenshot: await screenshotViewport(),
     }
   }
+  if (answer && answer.invalid) {
+    return {
+      status: 'error',
+      error: 'answer-binding-lost',
+      detail: `页面已经切到另一个对话（${answer.invalid}），本次回答的绑定立即作废，已停止等待而不是空等超时。诊断：${JSON.stringify(answerTracker.debug())}`,
+    }
+  }
   if (!answer) {
     return {
       status: 'error',
       error: 'no-answer',
-      detail: `尚未确认本次问题的完整回答，已停止截图；不会用旧回答或当前屏幕代替。请核对原任务，不要重复提问。诊断：${JSON.stringify(answerTracker.debug())}`,
+      detail: `没有认出属于本次提问的回答（不代表 GPT 没回答）：页面上没有和本次问题对得上的追问记录，或回答还在生成。已停止截图，不会用旧回答顶替。请先在 ChatGPT 标签页确认这次提问是否出现，再决定是否重问。诊断：${JSON.stringify(answerTracker.debug())}`,
     }
   }
 

@@ -69,6 +69,11 @@ export async function buildExtension({ root = defaultRoot, check = false, public
   // extension at runtime, so the token never lands in a repository or tarball.
   const endpoint = { worker: `http://127.0.0.1:${config.port}`, token: publicBuild ? '' : config.token }
   const manifest = JSON.parse(await fs.readFile(path.join(root, 'extension', 'src', 'manifest.json'), 'utf8'))
+  // The extension version must track the package, otherwise "which build is this?"
+  // is unanswerable in the field. Tests build into a bare temporary root, so a
+  // missing package.json simply leaves the manifest version alone.
+  const pkg = await fs.readFile(path.join(root, 'package.json'), 'utf8').then(JSON.parse, () => ({}))
+  if (typeof pkg.version === 'string' && /^\d+(\.\d+){0,3}$/.test(pkg.version)) manifest.version = pkg.version
   // Match patterns carry no port, and a headless user may run the worker on any
   // port, so grant the whole loopback host instead of one baked-in port.
   for (const origin of ['http://127.0.0.1/*', 'http://localhost/*']) {

@@ -13,6 +13,9 @@ export function answerKey(node) {
 // Snapshot immediately BEFORE clicking send, after any slow uploads.
 // A new DOM node is not evidence of a new reply: history is virtualized.
 export function createAnswerTracker(nodes, { question, anchor='', root=document } = {}) {
+  // Kept inside the factory: this file is also injected into a page as a bare
+  // function body by the browser test, where module-level helpers do not exist.
+  const convIdOf=url=>{try{return (new URL(url).pathname.match(/^\/c\/([^/]+)/)||[])[1]||''}catch{return ''}}
   const userSelector='[data-user-message-bubble],[data-message-author-role="user"],[data-markdown-text-style="user-message"]'
   const normalize=text=>String(text || '').replace(/\s+/g,' ').trim()
   const visible=n=>{const r=n.getBoundingClientRect();return n.isConnected && r.width>0 && r.height>0}
@@ -34,13 +37,26 @@ export function createAnswerTracker(nodes, { question, anchor='', root=document 
     if (!anchorNorm) return t===expected
     return t.includes(anchorNorm) && t.length>=Math.max(anchorNorm.length, expected.length*0.6)
   }
-  const existingConversation=/\/c\/[^/]+/.test(root.defaultView?.location?.pathname || '')
-  let questionKey='', selected=null, boundUrl=''
+  const existingConversation=!!convIdOf(root.defaultView?.location?.href || '')
+  let questionKey='', selected=null, boundUrl='', boundConversation='', invalidReason='', findDiag=null
 
   function currentQuestion() {
     if (!expected) return null
     const url=root.defaultView?.location?.href || ''
-    if (boundUrl && url!==boundUrl) return null
+    if (boundUrl) {
+      const now=convIdOf(url)
+      if (boundConversation) {
+        // A different /c/<id> is a different conversation: this job can no
+        // longer claim anything on screen.
+        if (now!==boundConversation) { invalidReason=now ? 'conversation-changed' : 'left-conversation'; return null }
+      } else if (now) {
+        // A brand-new chat commits its id right after the first send: chatgpt.com/
+        // or /?temp= becomes /c/<id> without replacing the page, so the binding
+        // taken just before it still refers to this same turn.
+        boundConversation=now
+      }
+      boundUrl=url
+    }
     const list=users().filter(visible)
     if (questionKey) {
       const found=list.filter(n=>answerKey(n)===questionKey && textMatches(n.innerText))
@@ -59,23 +75,40 @@ export function createAnswerTracker(nodes, { question, anchor='', root=document 
     }
     questionKey=key
     boundUrl=url
+    boundConversation=convIdOf(url)
     return candidate
   }
+
+  // The answer node and its question normally share a [data-turn-key] wrapper, but
+  // the page sometimes nests one inside the other (or keeps the key on an outer
+  // container), so accept either side containing the other.
+  const sameTurn=(node, turn)=>{
+    const at=node.closest('[data-turn-key]')
+    return !at || at===turn || turn.contains(at) || at.contains(turn)
+  }
+
   return {
     canSend() { return !existingConversation || !!previousUser },
+    // Non-empty once the page moved to another conversation; the caller should
+    // stop waiting instead of burning the whole timeout.
+    invalid() { return invalidReason },
     find(candidates) {
-      if (existingConversation && !previousUser) return null
+      findDiag={gate:'',nodes:candidates.length,visible:0,old:0,notAfter:0,otherTurn:0,empty:0,matches:0}
+      if (existingConversation && !previousUser) { findDiag.gate='no-previous-user'; return null }
       const user=currentQuestion()
       selected=null
-      if (!user) return null
+      if (!user) { findDiag.gate=invalidReason ? `binding-invalid:${invalidReason}` : 'no-question'; return null }
       const turn=user.closest('[data-turn-key]')
       const matches=candidates.filter(n=>{
-        if (!visible(n) || n.getBoundingClientRect().width<=100 || oldAnswers.has(n) || oldAnswerKeys.has(answerKey(n))) return false
-        if (!(user.compareDocumentPosition(n) & 4)) return false
-        if (turn && n.closest('[data-turn-key]')!==turn) return false
+        if (!visible(n) || n.getBoundingClientRect().width<=100) { findDiag.visible++; return false }
+        if (oldAnswers.has(n) || oldAnswerKeys.has(answerKey(n))) { findDiag.old++; return false }
+        if (!(user.compareDocumentPosition(n) & 4)) { findDiag.notAfter++; return false }
+        if (turn && !sameTurn(n, turn)) { findDiag.otherTurn++; return false }
         const text=(n.innerText || '').trim()
-        return text && !(/^思考了\s*\d/.test(text) && text.length<12)
+        if (!text || (/^思考了\s*\d/.test(text) && text.length<12)) { findDiag.empty++; return false }
+        return true
       })
+      findDiag.matches=matches.length
       // The final reply may replace an intermediate search message in this turn.
       selected=matches.at(-1) || null
       return selected
@@ -92,6 +125,7 @@ export function createAnswerTracker(nodes, { question, anchor='', root=document 
       const list=users().filter(visible)
       const last=list.at(-1)
       const text=last ? normalize(last.innerText) : ''
+      const url=root.defaultView?.location?.href || ''
       return {
         mode:anchorNorm ? 'anchor' : 'exact',
         expectedLen:expected.length,
@@ -105,6 +139,12 @@ export function createAnswerTracker(nodes, { question, anchor='', root=document 
         hasPreviousUser:!!previousUser,
         existingConversation,
         questionKey,
+        url,
+        boundUrl,
+        conversationId:convIdOf(url),
+        boundConversation,
+        invalidReason,
+        find:findDiag,
       }
     },
   }

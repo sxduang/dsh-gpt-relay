@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import path from 'node:path'
-import { buildDeliveryPlan, createDelivery } from '../relay/core/delivery.mjs'
+import { buildDeliveryPlan, createDelivery, wechatReason } from '../relay/core/delivery.mjs'
 
 const screenshot = 'data:image/png;base64,c2hvdA=='
 const baseJob = { id: 'abc', ws: path.join('workspace', 'demo'), createdAt: 1000, meta: {} }
@@ -64,7 +64,7 @@ test('overlay explanation is prepended after chunking and only to the first chun
   assert.equal(plan('', { overlay: { action: 'chose', label: '确定' } }).messages.length, 1)
 })
 
-function harness(imageCount = 5, screenshotCode = 0) {
+function harness(imageCount = 5, screenshotCode = 0, textCode = 0) {
   const events = []
   const storage = {
     scopeBase: async () => 'answers',
@@ -76,11 +76,22 @@ function harness(imageCount = 5, screenshotCode = 0) {
   }
   const deliver = createDelivery({
     config: { chunkChars: 1400 }, storage,
-    sendWechat: async (...args) => { events.push(['send', ...args]);return {code:/answer(?:-\d+)?\.png$/.test(args[1] || '')?(typeof screenshotCode==='function'?screenshotCode(args[1]):screenshotCode):0} },
+    sendWechat: async (...args) => { events.push(['send', ...args]);return {code:/answer(?:-\d+)?\.png$/.test(args[1] || '')?(typeof screenshotCode==='function'?screenshotCode(args[1]):screenshotCode):(typeof textCode==='function'?textCode(args[0]):textCode)} },
     sleep: async (ms) => events.push(['sleep', ms]),
   })
   return { events, deliver, storage }
 }
+
+test('a WeChat failure carries a reason the agent can act on, not a bare exit code',async()=>{
+  assert.equal(wechatReason(0),'ok')
+  assert.equal(wechatReason(2),'no-wechat-conversation-bound')
+  assert.equal(wechatReason(3),'wechat-window-closed')
+  assert.equal(wechatReason(1),'wechat-send-failed')
+  const {deliver}=harness(0,0,3)
+  const result=await deliver(baseJob,'正文',[],null)
+  assert.equal(result.wechatError.code,3)
+  assert.equal(result.wechatError.reason,'wechat-window-closed')
+})
 
 test('executor saves raw Markdown and preserves screenshot, text, up to four images, link order', async () => {
   const { events, deliver } = harness()

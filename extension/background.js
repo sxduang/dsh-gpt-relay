@@ -518,5 +518,5 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 }
 return { registerMessages }
 })()
-modules["background/messages.mjs"].registerMessages({"worker":"http://127.0.0.1:8123","token":""})
+modules["background/messages.mjs"].registerMessages({"worker":"http://127.0.0.1:8123","token":"9f3c1a7be24d58c0a6f19d3e7b84c2a5"})
 })()

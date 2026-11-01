@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GPT Relay Bridge",
-  "version": "0.2.0",
+  "version": "0.1.1",
   "description": "把本机中转的问题打进当前 ChatGPT 对话，并把回答回传本机。",
   "permissions": [
     "storage",

@@ -237,6 +237,34 @@ test('real Chrome captures one continuous answer without scrolling through histo
     assert.deepEqual(checks,{historyRejected:true,intermediatePending:true,finalSelected:true,recovered:true,missingRejected:true,otherRejected:true,unsentRejected:true,repeatedAllowed:true,binding:{revision:'question-bound-v1',questionKey:'data-turn-key:current',answerKey:'data-chatgpt-selection-message-id:final-current'}})
   })
 
+  await t.test('a new chat keeps its binding when the URL commits an id and leaving it invalidates at once',async()=>{
+    const result=await evaluate(`(async()=>{
+      ${answerKey.toString()}
+      ${createAnswerTracker.toString()}
+      const assistantNodes=()=>[...document.querySelectorAll('[data-markdown-text-style="assistant-message"]')];
+      const stopVisible=()=>false, dismissOverlays=async()=>null, visibleDialogs=()=>[];
+      const turn=(id,text,reply)=>'<div data-turn-key="'+id+'"><div data-talvt-turn-state="complete"><div data-user-message-bubble>'+text+'</div><div data-chatgpt-selection-message-id="a-'+id+'"><div data-markdown-text-style="assistant-message" style="width:600px">'+reply+'</div></div></div></div>';
+      // The test page is a data: URL, so the conversation URL is supplied instead
+      // of pushed: the tracker only reads it through root.defaultView.
+      const root={querySelectorAll:selector=>document.querySelectorAll(selector),defaultView:{location:{href:'https://chatgpt.com/'}}};
+      document.body.innerHTML='';
+      const tracker=createAnswerTracker(assistantNodes(),{question:'新对话里的问题',root});
+      // chatgpt.com/ becomes /c/<id> right after the first send, without reloading
+      document.body.innerHTML=turn('current','新对话里的问题','新对话的回答');
+      root.defaultView.location.href='https://chatgpt.com/c/committed-id';
+      const found=tracker.find(assistantNodes());
+      const committed=found?.innerText==='新对话的回答' && tracker.invalid()==='';
+      root.defaultView.location.href='https://chatgpt.com/c/elsewhere';
+      const afterMove=tracker.find(assistantNodes());
+      const invalid=tracker.invalid();
+      const sleep=async()=>{};
+      const run=${waitAnswer.toString()};
+      const early=await run(Date.now()+600000,{},{},tracker);
+      return {committed,afterMove,invalid,early};
+    })()`)
+    assert.deepEqual(result,{committed:true,afterMove:null,invalid:'conversation-changed',early:{invalid:'conversation-changed'}})
+  })
+
   await t.test('answer wait does not finish on a stable search preamble or return it at timeout',async()=>{
     const result=await evaluate(`(async()=>{
       ${answerKey.toString()}

@@ -95,6 +95,10 @@ dsh plugin add dsh-gpt-relay
 
 > 问GPT：用一句话介绍你自己，20 字以内。
 
+### 5. 装不上？让 DSH 自己装
+
+不想一步步手动装，可以把 [`docs/AGENT-PROMPT.md`](docs/AGENT-PROMPT.md) 里那段提示词整段发给 DSH：它按步骤装、配对、验证，常见失败（扩展没连上、页面改版、绑定失效、微信没收到）都有对照处理。也可以存进你那个工作区的 `AGENTS.md`，以后就不用再解释。
+
 ## 使用
 
 | 你说 | 发生什么 |
@@ -151,6 +155,9 @@ CLI 与工具等价，工具里用 `images: ["D:\\data\\a.png"]`（最多 4 张�
 - 同一时刻只处理一个任务，其余排队。
 - 截图时会把 ChatGPT 标签页切到前台（后台标签页不出帧，截不到），期间会短暂抢焦点。
 - 生成的画布（canvas）类回答无法截图，会明确报错而不是发半张图。
+- `%USERPROFILE%\.dsh\gpt-relay\extension\` 是**每次启动重新生成的副本**：手改会在下次启动被覆盖（旧文件留成 `.edited-<时间>.bak`，日志里会写一句）。要改扩展请改仓库里的 `extension/src/**` 再 `node scripts/build-extension.mjs`。
+- 一个 DSH 对话只对应一个 ChatGPT 对话；你在网页里手动切到别的对话，这一条就会以 `answer-binding-lost` 结束，而不是猜。
+- 扩展的 `manifest.version` 跟 npm 包版本一致（构建时写入），所以「装的是哪个版本」看插件版本即可。
 
 ## 故障排查
 
@@ -161,7 +168,11 @@ CLI 与工具等价，工具里用 `images: ["D:\\data\\a.png"]`（最多 4 张�
 | `no-composer` / `type-failed` | 页面改版 | 跑 `node relay/relay.mjs dump` 看结构，改 `config.selectors`，重启 DSH |
 | 截图失败 | `screenshotError` 的具体码 | 见 `docs/DESIGN.md` 的截图一节 |
 | 截图 `capture-raster-timeout` | ChatGPT 标签页是否在后台、窗口是否最小化 | 插件会先把标签页切前台并重试一次；仍失败就恢复窗口再问 |
-| 答案已生成却报 `no-answer` | `meta.answerBinding` 里有没有 `questionKey` | 旧版拿整段 prompt 和页面气泡做严格相等；新版改用问题原文做锚点 |
+| 答案已生成却报 `no-answer` | `meta.answerBinding` 里有没有 `questionKey` | 旧版拿整段 prompt 和页面气泡做严格相等；新版改用问题原文做锚点，并在 detail 里附诊断 JSON |
+| 报 `answer-binding-lost` | 用户是否在网页里换了对话 | 新对话提交后 URL 会从 `/` 变成 `/c/<id>`，这不算换对话；真换了就在原来那个对话重问 |
+| 报 `composer-busy` | detail 里的 `text`（前 40 字）和附件数 | 输入框里有没发出去的内容，插件不会替你清空；让用户自己清 |
+| 报 `paused` | 是否在传图 | 用户说「继续」时用 `gpt_relay_resume`，**不要**重新 `ask`（会重复发图） |
+| 微信没收到 | `delivery.wechatError.reason` | `no-wechat-conversation-bound` = 微信插件没绑定对话；`wechat-window-closed` = 本轮 10 条用完，下次发消息会自动补发 |
 | 微信没收到 | 是否装了 `dsh-wechat-plugin` | 没装时答案只回 agent |
 
 排查开关：`node relay/relay.mjs health | status <id> | log 30 | dump | probe`。
@@ -174,6 +185,9 @@ node scripts/build-extension.mjs          # 重建 extension/*.js（本地，含
 node scripts/build-extension.mjs --public # 发布用：令牌留空
 node --test tests/*.test.mjs
 ```
+
+`scripts/` 和 `tests/` 现在随 npm 包装——从 npm 装上之后可以直接在 `node_modules/dsh-gpt-relay`
+里跑上面这些命令（`npm run check` / `npm run build:public`），不用另外 clone 仓库。
 
 - `extension/src/**` 是扩展源码，`extension/{background.js,content.js,manifest.json,options.*}` 是**构建产物**，不要手改。
 - `relay/` 是 worker 与命令行；`lib/index.js` 是 DSH 插件入口。

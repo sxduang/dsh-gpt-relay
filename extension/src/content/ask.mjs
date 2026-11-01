@@ -45,8 +45,11 @@ export async function runAsk(job, sels) {
   // before anything else, otherwise the text goes nowhere.
   const overlayBefore = await dismissOverlays()
   const initialComposer=findComposer(sels)
-  if(!job.resumeUpload && initialComposer && (composerText(initialComposer).trim() || attachmentState(initialComposer,sels).count)) {
-    return {status:'error',error:'composer-busy',detail:'页面保留着未发送草稿，已停止；不要重复 ask 或新建对话。'}
+  // A draft left by the user (or by an interrupted attempt) is never cleared
+  // silently, but the error has to say what is actually sitting there.
+  const initialDraft=initialComposer ? {text:composerText(initialComposer).trim().slice(0,40),attachments:attachmentState(initialComposer,sels).count} : null
+  if(!job.resumeUpload && initialDraft && (initialDraft.text || initialDraft.attachments)) {
+    return {status:'error',error:'composer-busy',detail:`页面输入框里还留着未发送的内容${JSON.stringify(initialDraft)}，我没有动它；清空后重试。`}
   }
   if (job.newChat && !job.resumeUpload) {
     const newChat = [...document.querySelectorAll('button[aria-label]')].find((b) =>
@@ -83,7 +86,7 @@ export async function runAsk(job, sels) {
     return {status:'error',error:'image-send-unconfirmed',detail:'原草稿已尝试发送，不会重复发送。'}
   }
   if ((existingText || existing.count) && !adopt) {
-    return { status: 'error', error: 'composer-busy', detail: '输入框里已有你正在写的内容，我没有动它' }
+    return { status: 'error', error: 'composer-busy', detail: `输入框里已有未发送的内容${JSON.stringify({text:existingText.slice(0,40),attachments:existing.count})}，我没有动它。` }
   }
 
   if (!adopt && !setText(composer, job.text)) {
@@ -162,11 +165,18 @@ export async function runAsk(job, sels) {
       screenshot: await screenshotViewport(),
     }
   }
+  if (answer && answer.invalid) {
+    return {
+      status: 'error',
+      error: 'answer-binding-lost',
+      detail: `页面已经切到另一个对话（${answer.invalid}），本次回答的绑定立即作废，已停止等待而不是空等超时。诊断：${JSON.stringify(answerTracker.debug())}`,
+    }
+  }
   if (!answer) {
     return {
       status: 'error',
       error: 'no-answer',
-      detail: `尚未确认本次问题的完整回答，已停止截图；不会用旧回答或当前屏幕代替。请核对原任务，不要重复提问。诊断：${JSON.stringify(answerTracker.debug())}`,
+      detail: `没有认出属于本次提问的回答（不代表 GPT 没回答）：页面上没有和本次问题对得上的追问记录，或回答还在生成。已停止截图，不会用旧回答顶替。请先在 ChatGPT 标签页确认这次提问是否出现，再决定是否重问。诊断：${JSON.stringify(answerTracker.debug())}`,
     }
   }
 

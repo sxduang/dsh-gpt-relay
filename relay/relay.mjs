@@ -8,11 +8,13 @@
 
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { loadConfig, resolveRoot } from './config.mjs'
+import { loadConfig, resolveRoot, resolveConfigPath, rootOfConfig } from './config.mjs'
 import { loadImageFiles } from './core/attachments.mjs'
 
 const ROOT = resolveRoot()
+const CONFIG_PATH = resolveConfigPath(ROOT)
 const CONFIG = await loadConfig(ROOT)
+const LOG_FILE = path.join(rootOfConfig(CONFIG_PATH), 'relay', 'relay.log')
 const BASE = `http://127.0.0.1:${CONFIG.port}`
 const TOKEN = CONFIG.token
 
@@ -141,7 +143,7 @@ try {
     console.log(JSON.stringify(out, null, 2))
   } else if (command === 'log') {
     const n = Number(opts._[0] || 30)
-    const file = path.join(ROOT, 'relay', 'relay.log')
+    const file = LOG_FILE
     if (!(await exists(file))) console.log('(no log yet)')
     else console.log((await fs.readFile(file, 'utf8')).trimEnd().split('\n').slice(-n).join('\n'))
   } else if (command === 'dump') {

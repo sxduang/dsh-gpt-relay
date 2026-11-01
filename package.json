@@ -1,6 +1,6 @@
 {
   "name": "dsh-gpt-relay",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Ask the ChatGPT web page from DeepSeek Harness through the user's own logged-in Chrome, and relay the answer plus its full-answer screenshot back — to WeChat when dsh-wechat-plugin is installed.",
   "license": "MIT",
@@ -22,8 +22,11 @@
     "relay",
     "!relay/config.json",
     "extension",
+    "scripts",
+    "tests",
     "cordis.patch.yml",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "main": "lib/index.js",

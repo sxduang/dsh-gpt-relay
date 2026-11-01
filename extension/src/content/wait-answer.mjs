@@ -13,6 +13,8 @@ export async function waitAnswer(deadline, sels, sentAt, tracker) {
 
   while (Date.now() < deadline) {
     await sleep(800)
+    // The page moved to another conversation: waiting cannot recover this job.
+    if (tracker && tracker.invalid && tracker.invalid()) return { invalid: tracker.invalid() }
     const nodes = assistantNodes(sels)
     const candidate = tracker ? tracker.find(nodes) : null
     const fresh = tracker ? (candidate ? [candidate] : []) : nodes.filter((n) => !seen.has(n))

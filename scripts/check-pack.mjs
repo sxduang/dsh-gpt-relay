@@ -11,11 +11,14 @@ const required = [
   'extension/content.js',
   'extension/options.html',
   'extension/options.js',
+  'scripts/build-extension.mjs',
+  'scripts/check.mjs',
   'README.md',
+  'CHANGELOG.md',
   'LICENSE',
 ]
 
-const forbidden = [/^relay\/config\.json$/, /^\.gpt-relay\//, /^spike\//, /^backups\//, /^tests\//]
+const forbidden = [/^relay\/config\.json$/, /^\.gpt-relay\//, /^spike\//, /^backups\//]
 
 let report
 try {
