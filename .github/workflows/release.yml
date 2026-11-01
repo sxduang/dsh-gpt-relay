@@ -34,8 +34,14 @@ jobs:
             console.log(`releasing ${pkg.name}@${pkg.version}`);
           '
 
-      - name: Build the public extension and run the checks
+      - name: Run the checks
         run: node scripts/check.mjs
+
+      - name: Build the public extension (no local token) and inspect the tarball
+        run: |
+          node scripts/build-extension.mjs --public
+          npm pack --dry-run --json --ignore-scripts > pack.json
+          node scripts/check-pack.mjs
 
       - name: Publish to npm
         env:
@@ -45,7 +51,7 @@ jobs:
             echo "::error::NPM_TOKEN is not set. Add it under Settings -> Secrets and variables -> Actions."
             exit 1
           fi
-          npm publish --provenance --access public
+          npm publish --provenance --access public --ignore-scripts
 
       - name: Create the GitHub release
         if: startsWith(github.ref, 'refs/tags/v')

@@ -14,15 +14,8 @@ jobs:
           node-version: 24
       - name: Verify extension bundles, syntax and tests
         run: node scripts/check.mjs
-      - name: Check what the published tarball would contain
+      - name: Inspect the tarball npm publish would upload
         run: |
-          npm pack --dry-run --json > pack.json
-          node -e '
-            const files = JSON.parse(require("fs").readFileSync("pack.json", "utf8"))[0].files.map(f => f.path);
-            const need = ["lib/index.js", "cordis.patch.yml", "extension/manifest.json", "extension/background.js", "extension/content.js", "README.md", "LICENSE"];
-            const missing = need.filter(p => !files.includes(p));
-            const leak = files.filter(p => p.endsWith("relay/config.json"));
-            if (missing.length) { console.error("missing from tarball: " + missing.join(", ")); process.exit(1); }
-            if (leak.length) { console.error("local config leaked into tarball: " + leak.join(", ")); process.exit(1); }
-            console.log("tarball ok: " + files.length + " files");
-          '
+          node scripts/build-extension.mjs --public
+          npm pack --dry-run --json --ignore-scripts > pack.json
+          node scripts/check-pack.mjs
