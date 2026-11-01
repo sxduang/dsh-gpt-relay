@@ -1,0 +1,8 @@
+# dsh-gpt-relay bundle layer.
+# DSH applies this file automatically when dsh-gpt-relay is installed.
+# Keep profile overrides in the profile's own cordis.patch.yml as top-level rows.
+- insert:
+    - id: gpt-relay
+      name: dsh-gpt-relay
+      config:
+        port: 8123

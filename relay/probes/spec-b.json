@@ -1,0 +1,15 @@
+{
+  "counts": [
+    "h4.sr-only",
+    "h4.sr-only + div",
+    "div.block-BQZwFn",
+    "div[data-virtualized-turn-content]",
+    "[data-virtualized-turn-content]",
+    "div.flex.flex-col"
+  ],
+  "html": [
+    { "sel": "div.block-BQZwFn", "n": 2, "slice": 2500 },
+    { "sel": "h4.sr-only", "n": 1, "slice": 400 }
+  ],
+  "extract": "h4.sr-only + div"
+}

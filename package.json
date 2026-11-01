@@ -1,0 +1,48 @@
+{
+  "name": "dsh-gpt-relay",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Ask the ChatGPT web page from DeepSeek Harness through the user's own logged-in Chrome, and relay the answer plus its full-answer screenshot back — to WeChat when dsh-wechat-plugin is installed.",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/sxduang/dsh-gpt-relay.git" },
+  "homepage": "https://github.com/sxduang/dsh-gpt-relay#readme",
+  "bugs": { "url": "https://github.com/sxduang/dsh-gpt-relay/issues" },
+  "engines": { "node": ">=24" },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "chatgpt",
+    "relay",
+    "chrome-extension",
+    "wechat",
+    "plugin"
+  ],
+  "files": [
+    "lib",
+    "relay",
+    "!relay/config.json",
+    "extension",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build-extension.mjs",
+    "build:public": "node scripts/build-extension.mjs --public",
+    "check": "node scripts/check.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "prepack": "node scripts/build-extension.mjs --public",
+    "postpack": "node scripts/build-extension.mjs"
+  }
+}

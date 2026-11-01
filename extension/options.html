@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>GPT Relay Bridge · 配对</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body { font: 14px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; padding: 24px; max-width: 560px; }
+      h1 { font-size: 18px; margin: 0 0 4px; }
+      .sub { opacity: .7; margin: 0 0 20px; }
+      label { display: block; font-weight: 600; margin: 16px 0 6px; }
+      input[type=text] { width: 100%; box-sizing: border-box; padding: 9px 10px; border: 1px solid rgba(128,128,128,.45); border-radius: 8px; font: inherit; }
+      .row { display: flex; gap: 8px; margin-top: 14px; }
+      button { padding: 8px 16px; border-radius: 8px; border: 1px solid rgba(128,128,128,.45); background: #2563eb; color: #fff; font: inherit; cursor: pointer; }
+      button.secondary { background: transparent; color: inherit; }
+      #status { margin-top: 18px; padding: 10px 12px; border-radius: 8px; background: rgba(128,128,128,.12); white-space: pre-wrap; }
+      ol { padding-left: 20px; }
+      code { background: rgba(128,128,128,.15); padding: 1px 5px; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <h1>GPT Relay Bridge · 配对</h1>
+    <p class="sub">这个扩展只和本机的中转 worker 通信，不向任何服务器发送内容。</p>
+
+    <label for="code">配对码</label>
+    <input id="code" type="text" spellcheck="false" placeholder="127.0.0.1:8123#0123456789abcdef0123456789abcdef" />
+    <div class="row">
+      <button id="save">保存</button>
+      <button id="test" class="secondary">测试连接</button>
+      <button id="clear" class="secondary">清除</button>
+    </div>
+    <div id="status"></div>
+
+    <label>怎么拿配对码</label>
+    <ol>
+      <li>在 DSH 里装上 <code>dsh-gpt-relay</code> 插件（提供 <code>dsh-wechat-plugin</code> 时答案会一并推微信）。</li>
+      <li>让 agent 调用工具 <code>gpt_relay_pairing</code>，它会返回一行 <code>主机:端口#令牌</code>。</li>
+      <li>把那一行粘到上面，保存。</li>
+      <li>打开 <code>https://chatgpt.com</code> 的标签页并保持登录，中转只借用这个页面。</li>
+    </ol>
+    <script src="options.js"></script>
+  </body>
+</html>

@@ -1,0 +1,1 @@
+﻿{"counts":["iframe","[class*=\"canvas\" i]","[data-testid*=\"canvas\" i]","a[href]"],"html":[{"sel":"iframe","n":3,"slice":400},{"sel":"[data-testid*=\"canvas\" i]","n":3,"slice":600}],"buttons":true}

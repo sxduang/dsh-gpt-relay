@@ -1,0 +1,9 @@
+{
+  "counts": [
+    "[data-markdown-text-style=\"assistant-message\"]",
+    "[data-conversation-role=\"user\"]",
+    "[data-conversation-role=\"assistant\"]",
+    "h4.sr-only"
+  ],
+  "bodyText": 6000
+}

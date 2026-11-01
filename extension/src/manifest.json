@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "GPT Relay Bridge",
+  "version": "0.2.0",
+  "description": "把本机中转的问题打进当前 ChatGPT 对话，并把回答回传本机。",
+  "permissions": [
+    "storage",
+    "debugger"
+  ],
+  "host_permissions": [
+    "https://chatgpt.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

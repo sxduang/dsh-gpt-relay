@@ -1,0 +1,14 @@
+node_modules/
+relay/config.json
+relay/*.log
+relay/threads.json
+relay/debug/
+.gpt-relay/
+answers/
+backups/
+spike/
+docs/evidence/
+*.tmp
+proxy-env.txt
+.DS_Store
+

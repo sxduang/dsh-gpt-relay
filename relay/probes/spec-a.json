@@ -1,0 +1,19 @@
+{
+  "counts": [
+    "article",
+    "[data-testid^=\"conversation-turn\"]",
+    "[data-message-id]",
+    "[data-message-author-role]",
+    ".markdown",
+    ".prose",
+    "[class*=\"markdown\"]",
+    "section",
+    "[data-turn]",
+    "[data-testid]"
+  ],
+  "testids": true,
+  "chains": [
+    { "text": "ChatGPT 说", "depth": 9, "limit": 3 },
+    { "text": "你说", "depth": 9, "limit": 2 }
+  ]
+}
