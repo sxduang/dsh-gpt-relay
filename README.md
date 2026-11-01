@@ -47,6 +47,16 @@ github:sxduang/dsh-gpt-relay
 
 > 这一步用的是 pnpm（DSH 自带），大约二十秒。实测 18.1 秒装完 0.1.0。
 
+**机器上没有 git 的**（会报 `'git' 不是内部或外部命令`），把地址换成压缩包地址，效果一样、不依赖 git：
+
+```
+https://codeload.github.com/sxduang/dsh-gpt-relay/tar.gz/refs/heads/master
+```
+
+> 实测 2.1 秒装完，同样会自动写进 `bundles`。缺点是跟着 master 走，更新时先卸载再装。
+
+装到哪个 profile 由你当前用的界面决定（界面底部会显示「安装位置」，常见是 `profiles\desktop`，有些版本是 `profiles\web`）。
+
 不用界面、想走命令行的话（等价于上面那步，`dsh` 在 `DSH 安装目录\resources\runtime\cli\bin\dsh.cmd`）：
 
 ```powershell
