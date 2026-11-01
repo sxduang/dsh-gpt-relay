@@ -31,37 +31,31 @@ DSH agent ── 工具 gpt_relay_ask ──▶ 本机 worker（127.0.0.1，仅�
 | Chrome + 已登录的 ChatGPT | 免费版可用；页面语言中文或英文都可 |
 | dsh-wechat-plugin | **可选**。装了才会把答案推微信并回你；没装则只回给 agent |
 | 能访问 chatgpt.com | 需要代理时先开好代理 |
+| 能访问 github.com | 安装时要从 `codeload.github.com` 拉仓库，国内直连建议先开代理 |
 
 ## 安装
 
-### 1. 装插件
+### 1. 装插件（推荐：在 DSH 界面里点）
 
-> **尚未发布到 npm**（包名 `dsh-gpt-relay` 已预留）。现在从 GitHub 装。
+打开 DSH →「插件」页 →「添加插件」，在输入框里粘贴：
 
-从 GitHub 直接装（机器上要有 git）：
+```
+github:sxduang/dsh-gpt-relay
+```
+
+点「安装」，装完它的名字会自动出现在这个 profile 的 `dsh.profile.bundles` 里，**不用手改 `package.json`**。安装过程会从 `codeload.github.com` 拉仓库，国内直连可能较慢，建议先开代理。
+
+> 这一步用的是 pnpm（DSH 自带），大约二十秒。实测 18.1 秒装完 0.1.0。
+
+不用界面、想走命令行的话（等价于上面那步，`dsh` 在 `DSH 安装目录\resources\runtime\cli\bin\dsh.cmd`）：
 
 ```powershell
-cd "$env:USERPROFILE\.dsh\profiles\desktop"
-npm install "github:sxduang/dsh-gpt-relay"
+dsh plugin add github:sxduang/dsh-gpt-relay
 ```
 
-或者下载仓库 zip 解压到任意目录，再指向那个目录：
+`dsh plugin` 会把参数原样转给 pnpm，也会把包名写进 `bundles`。**不要**用 `npm install` 手动装——那样 `bundles` 不会更新，插件不会加载。
 
-```powershell
-cd "$env:USERPROFILE\.dsh\profiles\desktop"
-npm install "file:D:\path\to\dsh-gpt-relay"
-```
-
-装完 `npm` 只会写 `dependencies`，**还要在同一个 `package.json` 的 `dsh.profile.bundles` 里加上包名**，插件才会被加载：
-
-```jsonc
-{
-  "dependencies": { "dsh-gpt-relay": "github:sxduang/dsh-gpt-relay" },
-  "dsh": { "profile": { "bundles": [ "dsh-gpt-relay" ] } }
-}
-```
-
-加 `bundles` 就够了：包内自带 `cordis.patch.yml`，bundle 会自己把插件层插进去。等 npm 发布之后命令换成 `npm install dsh-gpt-relay`，`bundles` 那一步不变。
+（npm 上还没发布；发布后 `dsh plugin add dsh-gpt-relay` 即可。）
 
 ### 2. 重启 DSH
 
