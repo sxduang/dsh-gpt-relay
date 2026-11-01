@@ -31,43 +31,43 @@ DSH agent ── 工具 gpt_relay_ask ──▶ 本机 worker（127.0.0.1，仅�
 | Chrome + 已登录的 ChatGPT | 免费版可用；页面语言中文或英文都可 |
 | dsh-wechat-plugin | **可选**。装了才会把答案推微信并回你；没装则只回给 agent |
 | 能访问 chatgpt.com | 需要代理时先开好代理 |
-| 能访问 github.com | 安装时要从 `codeload.github.com` 拉仓库，国内直连建议先开代理 |
+| 能访问 npm registry | 默认从 npm 安装；界面里可切「中国大陆镜像源」。若改走 GitHub 安装，则需要能访问 `codeload.github.com` |
 
 ## 安装
 
-### 1. 装插件（推荐：在 DSH 界面里点）
+### 1. 装插件
 
-打开 DSH →「插件」页 →「添加插件」，在输入框里粘贴：
-
-```
-github:sxduang/dsh-gpt-relay
-```
-
-点「安装」，装完它的名字会自动出现在这个 profile 的 `dsh.profile.bundles` 里，**不用手改 `package.json`**。安装过程会从 `codeload.github.com` 拉仓库，国内直连可能较慢，建议先开代理。
-
-> 这一步用的是 pnpm（DSH 自带），大约二十秒。实测 18.1 秒装完 0.1.0。
-
-**机器上没有 git 的**（会报 `'git' 不是内部或外部命令`），把地址换成压缩包地址：
+打开 DSH →「插件」页 →「添加插件」，在输入框里填：
 
 ```
-https://codeload.github.com/sxduang/dsh-gpt-relay/tar.gz/refs/heads/master#v.tar.gz
+dsh-gpt-relay
 ```
 
-后面那个 `#v.tar.gz` 不是 GitHub 的路径，是骗过界面的后缀检查用的（它只收以 `.tar.gz`/`.tgz` 结尾的地址），pnpm 下载时会忽略它。实测 3.2 秒装完，同样自动写进 `bundles`。
+安装源保持默认即可（选「中国大陆镜像源」更快），点「安装」。装完包名会自动出现在这个 profile 的 `dsh.profile.bundles` 里，**不用手改 `package.json`**。
 
-> 缺点：跟着 master 走，更新时先卸载再装。
-
-装到哪个 profile 由你当前用的界面决定（界面底部会显示「安装位置」，常见是 `profiles\desktop`，有些版本是 `profiles\web`）。
+> 这一步用的是 pnpm（DSH 自带）。实测 4.2 秒装完 `0.1.0`。
 
 不用界面、想走命令行的话（等价于上面那步，`dsh` 在 `DSH 安装目录\resources\runtime\cli\bin\dsh.cmd`）：
 
 ```powershell
-dsh plugin add github:sxduang/dsh-gpt-relay
+dsh plugin add dsh-gpt-relay
 ```
 
 `dsh plugin` 会把参数原样转给 pnpm，也会把包名写进 `bundles`。**不要**用 `npm install` 手动装——那样 `bundles` 不会更新，插件不会加载。
 
-（npm 上还没发布；发布后 `dsh plugin add dsh-gpt-relay` 即可。）
+#### 装不上 npm 的备选
+
+同样贴在「添加插件」的输入框里：
+
+| 情况 | 填什么 |
+| --- | --- |
+| 想跟仓库最新代码 | `github:sxduang/dsh-gpt-relay`（本机要有 git） |
+| 机器上没有 git | `https://codeload.github.com/sxduang/dsh-gpt-relay/tar.gz/refs/heads/master#v.tar.gz` |
+| 已经下到本地 | 目录绝对路径，如 `D:\code\dsh-gpt-relay` |
+
+- 第二行末尾的 `#v.tar.gz` 不是 GitHub 的路径，是骗过界面后缀检查用的（对话框只收以 `.tar.gz`/`.tgz` 结尾的地址），pnpm 下载时会忽略它。
+- 这两种都跟着 `master` 走，更新时要先卸载再装；npm 包名那种可以直接升级。
+- 「安装源」那个下拉只对 npm 包名生效，对 Git 地址和压缩包无效。
 
 ### 2. 重启 DSH
 
@@ -187,7 +187,7 @@ node --test tests/*.test.mjs
 2. 打标签并推送：`git tag v0.1.1 && git push origin v0.1.1`。
 3. `.github/workflows/release.yml` 会校验「标签 = v + version」，重跑一遍检查，然后 `npm publish --provenance --access public`，并创建同名 GitHub Release。
 
-一次性准备：在 npm 注册账号并开启 2FA，创建 **Automation** 类型的 Access Token，粘贴到仓库 `Settings → Secrets and variables → Actions`，名字必须是 `NPM_TOKEN`。没有这个 secret 时发布任务会直接报错退出。
+一次性准备：在 npm 注册账号（建议开启 2FA），创建 **Granular Access Token**：权限选 `Read and write (publish and stage)` + `All packages`，并勾上 **Bypass two-factor authentication (2FA)**（账号开了 2FA 却不勾，发布会报 `403 ... bypass 2fa enabled is required`）。把令牌存到仓库 `Settings → Secrets and variables → Actions`，名字必须是 `NPM_TOKEN`；没有这个 secret 时发布任务会直接报错退出。
 
 `npm publish` / `npm pack` 会自动跑 `prepack`（`--public` 构建，扩展内令牌为空），结束后 `postpack` 还原本地构建。手工打包时请确认 `extension/background.js` 里的 `"token":""`，避免把自己的令牌带出去。
 
