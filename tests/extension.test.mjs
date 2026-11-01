@@ -12,7 +12,14 @@ import { usableImage } from '../extension/src/content/images.mjs'
 const root = fileURLToPath(new URL('../', import.meta.url))
 const background = await fs.readFile(new URL('../extension/background.js', import.meta.url), 'utf8')
 const content = await fs.readFile(new URL('../extension/content.js', import.meta.url), 'utf8')
-const config = JSON.parse(await fs.readFile(new URL('../relay/config.json', import.meta.url), 'utf8'))
+// relay/config.json is the developer's local file and is not committed, so a
+// clean clone must fall back to the same defaults as the build script.
+const config = await fs.readFile(new URL('../relay/config.json', import.meta.url), 'utf8')
+  .then(JSON.parse)
+  .catch(error => {
+    if (error.code !== 'ENOENT') throw error
+    return { port: 8123, token: '' }
+  })
 // Checked-in bundles are public builds with an empty token; a developer build
 // bakes in the local token. Tests follow whichever endpoint was baked in.
 const baked = (() => {
