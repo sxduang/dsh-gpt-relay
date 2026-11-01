@@ -1,5 +1,7 @@
 # dsh-gpt-relay
 
+[![ci](https://github.com/sxduang/dsh-gpt-relay/actions/workflows/ci.yml/badge.svg)](https://github.com/sxduang/dsh-gpt-relay/actions/workflows/ci.yml)
+
 在 DeepSeek Harness 里说一句「问GPT：……」，它会借用**你自己已登录的 Chrome** 打开 ChatGPT 网页版提问，把答案（文字 + 整段回答截图）推回微信，并把要点交还给 agent。
 
 它不调用 OpenAI API，不需要 API key，也不保存你的 ChatGPT 账号密码——只是替你操作那个已经登录的标签页。
