@@ -39,8 +39,14 @@ test('unloaded existing conversation cannot submit or bind a late historical que
 })
 
 test('real Chrome captures one continuous answer without scrolling through history or changing viewport', {timeout:60000}, async t=>{
-  const executable=process.env.RELAY_TEST_CHROME || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-  await fs.access(executable)
+  const candidates=[process.env.RELAY_TEST_CHROME,
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    '/usr/bin/google-chrome','/usr/bin/chromium','/usr/bin/chromium-browser'].filter(Boolean)
+  let executable=null
+  for(const candidate of candidates) {
+    try { await fs.access(candidate); executable=candidate; break } catch {}
+  }
+  if(!executable) { t.skip('Chrome is not installed; set RELAY_TEST_CHROME to run this capture test'); return }
   const profile=await fs.mkdtemp(path.join(os.tmpdir(),'relay-native-test-'))
   const dpr=Number(process.env.RELAY_TEST_DPR || 1)
   const child=spawn(executable,['--headless=new',`--force-device-scale-factor=${dpr}`,'--remote-debugging-port=0',`--user-data-dir=${profile}`,'--no-first-run','--no-default-browser-check','--disable-background-networking','--disable-sync','--disable-extensions','about:blank'],{stdio:'ignore',windowsHide:true})
