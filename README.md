@@ -176,7 +176,17 @@ node --test tests/*.test.mjs
 
 ## 发布
 
-`npm publish` 前会自动跑 `prepack`（`--public` 构建，令牌为空），发布后自动还原本地构建。手工打包时请确认 `extension/background.js` 里的 `"token":""`，避免把自己的令牌带出去。
+发布由 CI 完成，不要在本地手工 `npm publish`。
+
+1. 改 `package.json` 的 `version`，提交并推送。
+2. 打标签并推送：`git tag v0.1.1 && git push origin v0.1.1`。
+3. `.github/workflows/release.yml` 会校验「标签 = v + version」，重跑一遍检查，然后 `npm publish --provenance --access public`，并创建同名 GitHub Release。
+
+一次性准备：在 npm 注册账号并开启 2FA，创建 **Automation** 类型的 Access Token，粘贴到仓库 `Settings → Secrets and variables → Actions`，名字必须是 `NPM_TOKEN`。没有这个 secret 时发布任务会直接报错退出。
+
+`npm publish` / `npm pack` 会自动跑 `prepack`（`--public` 构建，扩展内令牌为空），结束后 `postpack` 还原本地构建。手工打包时请确认 `extension/background.js` 里的 `"token":""`，避免把自己的令牌带出去。
+
+发布产物自带 [provenance](https://docs.npmjs.com/generating-provenance-statements)：npm 页面上会显示「Built and signed on GitHub Actions」，证明包确实由这个仓库的这次提交构建。
 
 ## License
 
