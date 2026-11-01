@@ -47,13 +47,15 @@ github:sxduang/dsh-gpt-relay
 
 > 这一步用的是 pnpm（DSH 自带），大约二十秒。实测 18.1 秒装完 0.1.0。
 
-**机器上没有 git 的**（会报 `'git' 不是内部或外部命令`），把地址换成压缩包地址，效果一样、不依赖 git：
+**机器上没有 git 的**（会报 `'git' 不是内部或外部命令`），把地址换成压缩包地址：
 
 ```
-https://codeload.github.com/sxduang/dsh-gpt-relay/tar.gz/refs/heads/master
+https://codeload.github.com/sxduang/dsh-gpt-relay/tar.gz/refs/heads/master#v.tar.gz
 ```
 
-> 实测 2.1 秒装完，同样会自动写进 `bundles`。缺点是跟着 master 走，更新时先卸载再装。
+后面那个 `#v.tar.gz` 不是 GitHub 的路径，是骗过界面的后缀检查用的（它只收以 `.tar.gz`/`.tgz` 结尾的地址），pnpm 下载时会忽略它。实测 3.2 秒装完，同样自动写进 `bundles`。
+
+> 缺点：跟着 master 走，更新时先卸载再装。
 
 装到哪个 profile 由你当前用的界面决定（界面底部会显示「安装位置」，常见是 `profiles\desktop`，有些版本是 `profiles\web`）。
 
