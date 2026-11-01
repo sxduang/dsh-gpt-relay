@@ -54,7 +54,15 @@ async function bundle(root, entry, bootstrap, guard = '') {
 }
 
 export async function buildExtension({ root = defaultRoot, check = false, publicBuild = false } = {}) {
-  const config = JSON.parse(await fs.readFile(path.join(root, 'relay', 'config.json'), 'utf8'))
+  // The repository ships public artifacts and no relay/config.json (it holds the
+  // local token), so a clean clone must still be able to build and verify.
+  let config
+  try {
+    config = JSON.parse(await fs.readFile(path.join(root, 'relay', 'config.json'), 'utf8'))
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error
+    config = { port: 8123, token: '' }
+  }
   if (!Number.isInteger(config.port) || config.port < 1 || config.port > 65535) throw new Error('config.port must be an integer between 1 and 65535')
   if (config.token !== '' && (typeof config.token !== 'string' || !config.token)) throw new Error('config.token must be a string')
   // A public build ships no secret: the plugin materialises a paired copy of the
