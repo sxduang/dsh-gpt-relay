@@ -39,6 +39,11 @@ test('unloaded existing conversation cannot submit or bind a late historical que
 })
 
 test('real Chrome captures one continuous answer without scrolling through history or changing viewport', {timeout:60000}, async t=>{
+  // This test drives a real Chrome over CDP, so it only runs where a desktop
+  // browser is part of the developer's environment (or is named explicitly).
+  if(!process.env.RELAY_TEST_CHROME && process.platform !== 'win32') {
+    t.skip('Set RELAY_TEST_CHROME to run the real-Chrome capture test'); return
+  }
   const candidates=[process.env.RELAY_TEST_CHROME,
     'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     '/usr/bin/google-chrome','/usr/bin/chromium','/usr/bin/chromium-browser'].filter(Boolean)
