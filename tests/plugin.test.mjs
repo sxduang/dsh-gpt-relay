@@ -59,6 +59,25 @@ test('an unchanged copy is left alone and a hand edit is backed up before it is 
   }
 })
 
+test('the first boot after an upgrade adopts the old copy instead of calling it an edit', async () => {
+  const home = await temporary('relay-ext-')
+  const logs = []
+  try {
+    await materializeExtension(home, { port: 9876, token: 'tok-123' }, message => logs.push(message))
+    const dir = path.join(home, 'extension')
+    // An upgrade ships no record file: whatever sits there is our own last copy.
+    await fs.rm(path.join(dir, '.materialized.json'))
+    await fs.writeFile(path.join(dir, 'content.js'), '// older generated copy\n', 'utf8')
+    logs.length = 0
+    await materializeExtension(home, { port: 9876, token: 'tok-123' }, message => logs.push(message))
+    assert.deepEqual(logs.filter(line => line.includes('本地修改')), [])
+    assert.deepEqual((await fs.readdir(dir)).filter(name => name.includes('.edited-')), [])
+    assert.ok((await fs.readFile(path.join(dir, 'content.js'), 'utf8')).includes('__gptRelayLoaded'))
+  } finally {
+    await fs.rm(home, { recursive: true, force: true })
+  }
+})
+
 test('the CLI finds the generated config in the data directory when the package ships none', async () => {
   const home = await temporary('relay-home-')
   const emptyRoot = path.join(home, 'installed-package')
